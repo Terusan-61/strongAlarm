@@ -19,14 +19,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Alarm
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
-import androidx.compose.material3.Divider
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -34,11 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -52,17 +45,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.terusan.strongalarm.domain.model.Alarm
-import com.terusan.strongalarm.domain.model.MissionDifficulty
 import com.terusan.strongalarm.domain.model.MissionType
+import com.terusan.strongalarm.ui.components.NumberWheelPicker
+import com.terusan.strongalarm.ui.components.SettingWheelItem
 import java.time.DayOfWeek
 
 /**
  * アラーム作成・編集モーダルシート
+ * 時刻・スヌーズ・起床確認をリール式スライドおよび直接数値入力で快適に設定可能
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -114,46 +109,69 @@ fun AlarmEditSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 時刻設定セクション
-            Row(
+            // ==========================================
+            // 1. 時刻設定セクション (リール状スライド ＆ 直接入力)
+            // ==========================================
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
             ) {
-                // 時
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("時", style = MaterialTheme.typography.bodySmall)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedButton(onClick = { hour = (hour + 23) % 24 }) { Text("-") }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // 時リール
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("時", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            NumberWheelPicker(
+                                value = hour,
+                                range = 0..23,
+                                onValueChange = { hour = it },
+                                format = { "%02d".format(it) }
+                            )
+                        }
+
                         Text(
-                            text = "%02d".format(hour),
+                            text = ":",
                             fontSize = 36.sp,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 12.dp)
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 16.dp)
                         )
-                        OutlinedButton(onClick = { hour = (hour + 1) % 24 }) { Text("+") }
-                    }
-                }
 
-                Text(":", fontSize = 36.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp))
-
-                // 分
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("分", style = MaterialTheme.typography.bodySmall)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedButton(onClick = { minute = (minute + 55) % 60 }) { Text("-5") }
-                        Text(
-                            text = "%02d".format(minute),
-                            fontSize = 36.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 12.dp)
-                        )
-                        OutlinedButton(onClick = { minute = (minute + 5) % 60 }) { Text("+5") }
+                        // 分リール (1分刻みでスライド＆直接入力)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("分", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            NumberWheelPicker(
+                                value = minute,
+                                range = 0..59,
+                                onValueChange = { minute = it },
+                                format = { "%02d".format(it) }
+                            )
+                        }
                     }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "※上下にスライドして変更 / 数字タップで直接入力",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // アラーム名（ラベル）
             OutlinedTextField(
@@ -164,7 +182,7 @@ fun AlarmEditSheet(
                 singleLine = true
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // 繰り返し曜日セレクタ
             Text("繰り返し曜日", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
@@ -182,7 +200,7 @@ fun AlarmEditSheet(
                     DayOfWeek.SATURDAY to "土",
                     DayOfWeek.SUNDAY to "日"
                 )
-                weekDays.forEach { (day, label) ->
+                weekDays.forEach { (day, labelText) ->
                     val isSelected = selectedDays.contains(day)
                     Box(
                         modifier = Modifier
@@ -202,7 +220,7 @@ fun AlarmEditSheet(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = label,
+                            text = labelText,
                             color = if (isSelected) MaterialTheme.colorScheme.onPrimary
                             else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
@@ -215,49 +233,39 @@ fun AlarmEditSheet(
             HorizontalDivider()
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 1. スヌーズ設定（回数上限指定！）
+            // ==========================================
+            // 2. スヌーズ設定 (スライド調整 ＆ 直接数値入力)
+            // ==========================================
             Text("スヌーズ設定", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("スヌーズ上限回数", style = MaterialTheme.typography.bodyMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    listOf(0, 1, 2, 3, 5).forEach { count ->
-                        FilterChip(
-                            selected = maxSnoozeCount == count,
-                            onClick = { maxSnoozeCount = count },
-                            label = { Text(if (count == 0) "なし" else "${count}回") }
-                        )
-                    }
-                }
-            }
+            Spacer(modifier = Modifier.height(10.dp))
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("スヌーズ間隔", style = MaterialTheme.typography.bodyMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    listOf(3, 5, 10).forEach { mins ->
-                        FilterChip(
-                            selected = snoozeInterval == mins,
-                            onClick = { snoozeInterval = mins },
-                            label = { Text("${mins}分") }
-                        )
-                    }
-                }
-            }
+            SettingWheelItem(
+                title = "スヌーズ上限回数",
+                value = maxSnoozeCount,
+                range = 0..10,
+                unitText = "回",
+                zeroValueLabel = "なし（スヌーズ不可）",
+                subtitle = "上限に達すると二度寝防止のためスヌーズ不可になります",
+                onValueChange = { maxSnoozeCount = it }
+            )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            SettingWheelItem(
+                title = "スヌーズ間隔",
+                value = snoozeInterval,
+                range = 1..30,
+                unitText = "分",
+                onValueChange = { snoozeInterval = it }
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
             HorizontalDivider()
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 2. 起床確認機能（二度寝防止！）
+            // ==========================================
+            // 3. 起床確認機能 (二度寝防止)
+            // ==========================================
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -266,11 +274,12 @@ fun AlarmEditSheet(
                 Column(modifier = Modifier.weight(1f)) {
                     Text("起床確認（二度寝防止）", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text(
-                        "アラーム停止後、指定時間後に本当に起きているか確認します。応答がなければ再鳴動します！",
+                        "アラーム停止後、指定時間後に本当に起きているか確認。応答がなければ再鳴動します！",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                Spacer(modifier = Modifier.width(8.dp))
                 Switch(
                     checked = checkWakeUp,
                     onCheckedChange = { checkWakeUp = it }
@@ -278,40 +287,35 @@ fun AlarmEditSheet(
             }
 
             if (checkWakeUp) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("確認までの時間", style = MaterialTheme.typography.bodyMedium)
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        listOf(5, 10, 15, 20).forEach { mins ->
-                            FilterChip(
-                                selected = checkWakeUpMinutes == mins,
-                                onClick = { checkWakeUpMinutes = mins },
-                                label = { Text("${mins}分後") }
-                            )
-                        }
-                    }
-                }
+                Spacer(modifier = Modifier.height(10.dp))
+                SettingWheelItem(
+                    title = "確認までの時間",
+                    value = checkWakeUpMinutes,
+                    range = 1..60,
+                    unitText = "分後",
+                    subtitle = "アラームを止めてから何分後に確認するか設定します",
+                    onValueChange = { checkWakeUpMinutes = it }
+                )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
             HorizontalDivider()
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 3. アクション解除ミッション
+            // ==========================================
+            // 4. アクション解除ミッション
+            // ==========================================
             Text("解除ミッション", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(
-                "アラーム停止時に特定のアクションを要求します（近所迷惑防止のため、アクション中は一時消音されます）",
+                "アラーム停止時に特定のアクションを要求します（近所迷惑防止のためアクション中は消音されます）",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(8.dp))
             FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 MissionType.values().forEach { type ->
                     FilterChip(
@@ -322,11 +326,13 @@ fun AlarmEditSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
             HorizontalDivider()
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 4. 音量設定 ＆ 徐々に音量アップ
+            // ==========================================
+            // 5. 音量設定 ＆ 徐々に音量アップ
+            // ==========================================
             Text("音量 ＆ サウンド", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
             Row(
@@ -350,7 +356,7 @@ fun AlarmEditSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text("徐々に音量を大きくする", style = MaterialTheme.typography.bodyMedium)
                     Text("優しい音量から開始して驚かせません", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
