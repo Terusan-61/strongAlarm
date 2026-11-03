@@ -240,8 +240,14 @@ class AlarmRingingService : Service() {
         if (alarm != null) {
             val scheduler = AlarmScheduler(applicationContext)
 
-            // 単発アラームなら無効化、繰り返しなら次回を予約
-            serviceScope.launch {
+            // 起床確認が有効な場合は、コルーチンの外で即座に確実にスケジュール！
+            if (alarm.checkWakeUp) {
+                scheduler.scheduleWakeUpCheck(alarm)
+                Log.d(TAG, "起床確認アラームを ${alarm.checkWakeUpAfterMinutes}分後にスケジュールしました")
+            }
+
+            // DB処理と次回繰り返し予約をバックグラウンドで実行
+            CoroutineScope(Dispatchers.IO).launch {
                 val db = StrongAlarmDatabase.getDatabase(applicationContext)
                 val repository = AlarmRepositoryImpl(db.alarmDao())
 
@@ -250,12 +256,6 @@ class AlarmRingingService : Service() {
                 } else {
                     repository.updateSnoozeCount(alarm.id, 0)
                     scheduler.schedule(alarm)
-                }
-
-                // 起床確認が有効な場合は、指定時間後に起床確認をスケジュール！
-                if (alarm.checkWakeUp && !isWakeUpCheck) {
-                    scheduler.scheduleWakeUpCheck(alarm)
-                    Log.d(TAG, "起床確認アラームを ${alarm.checkWakeUpAfterMinutes}分後にスケジュールしました")
                 }
             }
         }
@@ -275,13 +275,14 @@ class AlarmRingingService : Service() {
         val alarm = currentAlarm
         if (alarm != null) {
             val scheduler = AlarmScheduler(applicationContext)
-            serviceScope.launch {
+            scheduler.scheduleSnooze(alarm)
+
+            CoroutineScope(Dispatchers.IO).launch {
                 val db = StrongAlarmDatabase.getDatabase(applicationContext)
                 val repository = AlarmRepositoryImpl(db.alarmDao())
 
                 val nextSnoozeCount = alarm.currentSnoozeCount + 1
                 repository.updateSnoozeCount(alarm.id, nextSnoozeCount)
-                scheduler.scheduleSnooze(alarm)
             }
         }
 

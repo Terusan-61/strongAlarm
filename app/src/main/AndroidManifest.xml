@@ -33,6 +33,14 @@
             </intent-filter>
         </activity>
 
+        <!-- 起床確認（二度寝チェック）専用フルスクリーンActivity -->
+        <activity
+            android:name=".ui.wakeup.WakeUpCheckActivity"
+            android:exported="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:launchMode="singleTask" />
+
         <!-- アラーム鳴動用フォアグラウンドサービス -->
         <service
             android:name=".service.AlarmRingingService"

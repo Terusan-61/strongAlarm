@@ -54,29 +54,29 @@ object AlarmTimeCalculator {
             }
         }
 
-        // フォールバック（通常到達しない）
+        // フォールバック
         return targetToday.plusDays(1)
     }
 
     /**
      * スヌーズ次回鳴動時刻（エポックミリ秒）
+     * 秒を切り捨てず、現在時刻から指定分数後（正確なミリ秒）にセット
      */
     fun calculateSnoozeTriggerTimeMillis(
         intervalMinutes: Int,
-        now: LocalDateTime = LocalDateTime.now()
+        currentTimeMillis: Long = System.currentTimeMillis()
     ): Long {
-        val trigger = now.plusMinutes(intervalMinutes.toLong()).withSecond(0).withNano(0)
-        return trigger.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        return currentTimeMillis + intervalMinutes * 60 * 1000L
     }
 
     /**
      * 起床確認トリガー時刻（エポックミリ秒）
+     * 秒を切り捨てず、現在時刻から指定分数後（正確なミリ秒）にセット
      */
     fun calculateWakeUpCheckTriggerTimeMillis(
         minutesAfter: Int,
-        now: LocalDateTime = LocalDateTime.now()
+        currentTimeMillis: Long = System.currentTimeMillis()
     ): Long {
-        val trigger = now.plusMinutes(minutesAfter.toLong()).withSecond(0).withNano(0)
-        return trigger.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        return currentTimeMillis + minutesAfter * 60 * 1000L
     }
 }

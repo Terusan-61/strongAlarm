@@ -51,4 +51,12 @@ class AlarmTimeCalculatorTest {
         val next = AlarmTimeCalculator.calculateNextTriggerDateTime(alarm, wednesdayNow)
         assertEquals(LocalDateTime.of(2026, 11, 4, 7, 0), next)
     }
+
+    @Test
+    fun calculateWakeUpCheckTriggerTimeMillis_exactMinutesAfter() {
+        val baseMillis = 1_000_000L
+        val trigger = AlarmTimeCalculator.calculateWakeUpCheckTriggerTimeMillis(1, baseMillis)
+        // 1分後 = 60,000ms 後
+        assertEquals(baseMillis + 60_000L, trigger)
+    }
 }
