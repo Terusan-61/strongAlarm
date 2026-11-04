@@ -28,6 +28,7 @@ data class AlarmEntity(
     val missionDifficulty: MissionDifficulty,
     val checkWakeUp: Boolean,
     val checkWakeUpAfterMinutes: Int,
+    val checkWakeUpSilent: Boolean = true,
     val isVibrate: Boolean
 ) {
     /**
@@ -49,6 +50,7 @@ data class AlarmEntity(
         missionDifficulty = missionDifficulty,
         checkWakeUp = checkWakeUp,
         checkWakeUpAfterMinutes = checkWakeUpAfterMinutes,
+        checkWakeUpSilent = checkWakeUpSilent,
         isVibrate = isVibrate
     )
 
@@ -72,6 +74,7 @@ data class AlarmEntity(
             missionDifficulty = alarm.missionDifficulty,
             checkWakeUp = alarm.checkWakeUp,
             checkWakeUpAfterMinutes = alarm.checkWakeUpAfterMinutes,
+            checkWakeUpSilent = alarm.checkWakeUpSilent,
             isVibrate = alarm.isVibrate
         )
     }

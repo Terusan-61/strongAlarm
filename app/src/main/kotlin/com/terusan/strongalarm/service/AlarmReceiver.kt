@@ -30,8 +30,9 @@ class AlarmReceiver : BroadcastReceiver() {
         val alarmId = intent.getLongExtra(AlarmScheduler.EXTRA_ALARM_ID, -1L)
         val isSnooze = intent.getBooleanExtra(AlarmScheduler.EXTRA_IS_SNOOZE, false)
         val isWakeUpCheck = intent.getBooleanExtra(AlarmScheduler.EXTRA_IS_WAKEUP_CHECK, false)
+        val isCheckWakeUpSilent = intent.getBooleanExtra(AlarmScheduler.EXTRA_CHECK_WAKEUP_SILENT, true)
 
-        Log.d(TAG, "アラーム受信! ID: $alarmId, スヌーズ: $isSnooze, 起床確認: $isWakeUpCheck")
+        Log.d(TAG, "アラーム受信! ID: $alarmId, スヌーズ: $isSnooze, 起床確認: $isWakeUpCheck, サイレント: $isCheckWakeUpSilent")
 
         if (alarmId == -1L) return
 
@@ -49,6 +50,7 @@ class AlarmReceiver : BroadcastReceiver() {
                         Intent.FLAG_ACTIVITY_CLEAR_TOP or
                         Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                 putExtra(WakeUpCheckActivity.EXTRA_ALARM_ID, alarmId)
+                putExtra(WakeUpCheckActivity.EXTRA_CHECK_WAKEUP_SILENT, isCheckWakeUpSilent)
             }
 
             // PendingIntent 作成時には activityOptionsBundle は渡さない（渡すと IllegalArgumentException でクラッシュする）
@@ -67,8 +69,10 @@ class AlarmReceiver : BroadcastReceiver() {
                     .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .setUsage(android.media.AudioAttributes.USAGE_ALARM)
                     .build()
-                val soundUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION)
-                    ?: android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
+                val soundUri = if (isCheckWakeUpSilent) null else {
+                    android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION)
+                        ?: android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
+                }
 
                 val channel = NotificationChannel(
                     WAKEUP_CHECK_CHANNEL_ID,
@@ -78,15 +82,15 @@ class AlarmReceiver : BroadcastReceiver() {
                     description = "起床確認時に画面を点灯させて確認画面を表示する通知です"
                     lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
                     setBypassDnd(true)
-                    setSound(soundUri, audioAttributes)
-                    enableVibration(true)
+                    setSound(soundUri, if (isCheckWakeUpSilent) null else audioAttributes)
+                    enableVibration(!isCheckWakeUpSilent)
                 }
                 notificationManager.createNotificationChannel(channel)
             }
 
-            val notification = NotificationCompat.Builder(context, WAKEUP_CHECK_CHANNEL_ID)
+            val notificationBuilder = NotificationCompat.Builder(context, WAKEUP_CHECK_CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle("起床確認（二度寝防止）")
+                .setContentTitle(if (isCheckWakeUpSilent) "🤫 起床確認（サイレント抜き打ち）" else "起床確認（二度寝防止）")
                 .setContentText("起きていますか？タップして確認してください")
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -94,7 +98,13 @@ class AlarmReceiver : BroadcastReceiver() {
                 .setFullScreenIntent(fullScreenPendingIntent, true)
                 .setContentIntent(fullScreenPendingIntent)
                 .setAutoCancel(true)
-                .build()
+
+            if (isCheckWakeUpSilent) {
+                notificationBuilder.setSilent(true)
+                notificationBuilder.setVibrate(longArrayOf(0))
+            }
+
+            val notification = notificationBuilder.build()
 
             try {
                 notificationManager.notify(WAKEUP_CHECK_NOTIFICATION_ID, notification)

@@ -40,6 +40,7 @@ data class Alarm(
     val missionDifficulty: MissionDifficulty = MissionDifficulty.EASY, // 難易度
     val checkWakeUp: Boolean = true,                  // 起床確認を行うか
     val checkWakeUpAfterMinutes: Int = 10,            // 起床確認までの時間（分）
+    val checkWakeUpSilent: Boolean = true,            // 起床確認を完全サイレント（無音・画面点灯のみ）で行うか
     val isVibrate: Boolean = true                     // バイブレーション有効化
 ) {
     /**

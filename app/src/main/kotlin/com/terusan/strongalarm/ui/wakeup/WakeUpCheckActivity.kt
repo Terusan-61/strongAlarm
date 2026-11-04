@@ -84,6 +84,7 @@ class WakeUpCheckActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_ALARM_ID = "extra_alarm_id"
+        const val EXTRA_CHECK_WAKEUP_SILENT = "extra_check_wakeup_silent"
         private const val TOTAL_DURATION_MS = 60_000L // 制限時間 60秒
         private const val INTERVAL_MS = 100L
     }
@@ -91,10 +92,13 @@ class WakeUpCheckActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         alarmId = intent.getLongExtra(EXTRA_ALARM_ID, -1L)
+        val isSilent = intent.getBooleanExtra(EXTRA_CHECK_WAKEUP_SILENT, true)
 
         // 画面点灯・ロック画面上への表示設定
         setupWakeLock()
-        initAudioAndVibration()
+        if (!isSilent) {
+            initAudioAndVibration()
+        }
         startCountDown()
 
         enableEdgeToEdge()
@@ -110,6 +114,7 @@ class WakeUpCheckActivity : ComponentActivity() {
                     WakeUpCheckScreen(
                         remainingSeconds = remainingSeconds,
                         progress = progress,
+                        isSilent = isSilent,
                         onConfirmed = { onWakeUpConfirmed() }
                     )
                 }
@@ -278,6 +283,7 @@ class WakeUpCheckActivity : ComponentActivity() {
 fun WakeUpCheckScreen(
     remainingSeconds: Int,
     progress: Float,
+    isSilent: Boolean = false,
     onConfirmed: () -> Unit
 ) {
     val animatedProgress by animateFloatAsState(targetValue = progress, label = "progress")
@@ -311,6 +317,22 @@ fun WakeUpCheckScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+
+            if (isSilent) {
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f)),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    Text(
+                        text = "🤫 サイレント抜き打ちモード（無音・画面点灯中）",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
 
             Text(
                 text = "二度寝チェック ⏰",

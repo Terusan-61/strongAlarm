@@ -145,7 +145,12 @@ fun AlarmCard(
                 if (alarm.checkWakeUp) {
                     AssistChip(
                         onClick = onClick,
-                        label = { Text("起床確認: ${alarm.checkWakeUpAfterMinutes}分後") },
+                        label = {
+                            Text(
+                                if (alarm.checkWakeUpSilent) "🤫 起床確認: ${alarm.checkWakeUpAfterMinutes}分後(サイレント)"
+                                else "起床確認: ${alarm.checkWakeUpAfterMinutes}分後"
+                            )
+                        },
                         colors = AssistChipDefaults.assistChipColors(
                             containerColor = MaterialTheme.colorScheme.tertiaryContainer
                         )

@@ -77,6 +77,7 @@ fun AlarmEditSheet(
     var missionType by remember { mutableStateOf(initialAlarm.missionType) }
     var checkWakeUp by remember { mutableStateOf(initialAlarm.checkWakeUp) }
     var checkWakeUpMinutes by remember { mutableIntStateOf(initialAlarm.checkWakeUpAfterMinutes) }
+    var checkWakeUpSilent by remember { mutableStateOf(initialAlarm.checkWakeUpSilent) }
     var isVibrate by remember { mutableStateOf(initialAlarm.isVibrate) }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -296,6 +297,27 @@ fun AlarmEditSheet(
                     subtitle = "アラームを止めてから何分後に確認するか設定します",
                     onValueChange = { checkWakeUpMinutes = it }
                 )
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("サイレント起床確認（抜き打ちモード）", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "画面点灯のみ（無音・バイブなし）で確認します。二度寝していると気づかずに大音量で再鳴動します！",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Switch(
+                        checked = checkWakeUpSilent,
+                        onCheckedChange = { checkWakeUpSilent = it }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -391,6 +413,7 @@ fun AlarmEditSheet(
                         missionType = missionType,
                         checkWakeUp = checkWakeUp,
                         checkWakeUpAfterMinutes = checkWakeUpMinutes,
+                        checkWakeUpSilent = checkWakeUpSilent,
                         isVibrate = isVibrate
                     )
                     onSave(updated)

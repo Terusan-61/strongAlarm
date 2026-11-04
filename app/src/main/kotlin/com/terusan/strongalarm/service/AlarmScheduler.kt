@@ -21,6 +21,7 @@ class AlarmScheduler(private val context: Context) {
         const val EXTRA_ALARM_ID = "extra_alarm_id"
         const val EXTRA_IS_SNOOZE = "extra_is_snooze"
         const val EXTRA_IS_WAKEUP_CHECK = "extra_is_wakeup_check"
+        const val EXTRA_CHECK_WAKEUP_SILENT = "extra_check_wakeup_silent"
 
         // 起床確認用のリクエストコードオフセット（通常アラームIDと衝突させないため）
         private const val WAKEUP_CHECK_OFFSET = 1_000_000
@@ -58,10 +59,15 @@ class AlarmScheduler(private val context: Context) {
      */
     fun scheduleWakeUpCheck(alarm: Alarm) {
         val triggerTimeMillis = AlarmTimeCalculator.calculateWakeUpCheckTriggerTimeMillis(alarm.checkWakeUpAfterMinutes)
-        val pendingIntent = createAlarmPendingIntent(alarm.id, isSnooze = false, isWakeUpCheck = true)
+        val pendingIntent = createAlarmPendingIntent(
+            alarmId = alarm.id,
+            isSnooze = false,
+            isWakeUpCheck = true,
+            checkWakeUpSilent = alarm.checkWakeUpSilent
+        )
 
         setExactAlarm(triggerTimeMillis, pendingIntent)
-        Log.d(TAG, "起床確認(ID: ${alarm.id}) を ${alarm.checkWakeUpAfterMinutes}分後にセットしました")
+        Log.d(TAG, "起床確認(ID: ${alarm.id}) を ${alarm.checkWakeUpAfterMinutes}分後にセットしました (サイレント: ${alarm.checkWakeUpSilent})")
     }
 
     /**
@@ -113,12 +119,14 @@ class AlarmScheduler(private val context: Context) {
     private fun createAlarmPendingIntent(
         alarmId: Long,
         isSnooze: Boolean,
-        isWakeUpCheck: Boolean
+        isWakeUpCheck: Boolean,
+        checkWakeUpSilent: Boolean = true
     ): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra(EXTRA_ALARM_ID, alarmId)
             putExtra(EXTRA_IS_SNOOZE, isSnooze)
             putExtra(EXTRA_IS_WAKEUP_CHECK, isWakeUpCheck)
+            putExtra(EXTRA_CHECK_WAKEUP_SILENT, checkWakeUpSilent)
         }
 
         val requestCode = if (isWakeUpCheck) {
