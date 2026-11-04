@@ -1,6 +1,7 @@
 package com.terusan.strongalarm.ui.wakeup
 
 import android.app.KeyguardManager
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
@@ -60,6 +61,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.terusan.strongalarm.MainActivity
+import com.terusan.strongalarm.service.AlarmReceiver
 import com.terusan.strongalarm.service.AlarmRingingService
 import com.terusan.strongalarm.service.AlarmScheduler
 import com.terusan.strongalarm.ui.theme.StrongAlarmTheme
@@ -235,6 +237,12 @@ class WakeUpCheckActivity : ComponentActivity() {
     private fun cleanup() {
         countDownTimer?.cancel()
         countDownTimer = null
+        try {
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            notificationManager?.cancel(AlarmReceiver.WAKEUP_CHECK_NOTIFICATION_ID)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         try {
             mediaPlayer?.stop()
             mediaPlayer?.release()
