@@ -60,19 +60,18 @@ class MainActivity : ComponentActivity() {
     /**
      * 画面オフ時・ロック時でもアラーム画面を最前面に表示するための設定
      */
+    @Suppress("DEPRECATION")
     private fun setupLockScreenFlags() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
-        } else {
-            @Suppress("DEPRECATION")
-            window.addFlags(
-                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
-                        WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
-            )
         }
+        window.addFlags(
+            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+        )
     }
 
     /**
@@ -89,7 +88,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Android 12+ で Exact Alarm 権限が許可されていない場合のガイド導線（必要時）
+        // Android 12+ で Exact Alarm 権限が許可されていない場合のガイド導線
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
             if (!alarmManager.canScheduleExactAlarms()) {
@@ -98,6 +97,15 @@ class MainActivity : ComponentActivity() {
                 }
                 startActivity(intent)
             }
+        }
+
+        // バッテリー最適化除外の要求（Dozeモードによるアラーム遅延を完全に防止）
+        val powerManager = getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+        if (powerManager != null && !powerManager.isIgnoringBatteryOptimizations(packageName)) {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            runCatching { startActivity(intent) }
         }
     }
 }
