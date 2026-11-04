@@ -41,7 +41,7 @@ class AlarmReceiver : BroadcastReceiver() {
         if (isWakeUpCheck) {
             // ==========================================
             // 起床確認フェーズ
-            // FullScreenIntent を設定した高優先度通知を発行して、
+            // FullScreenIntent を設定した高優先度アラーム通知を発行して、
             // Android 14+ の BAL（Background Activity Launch）制限を突破し画面を強制点灯＆フルスクリーン起動
             // ==========================================
             val checkIntent = Intent(context, WakeUpCheckActivity::class.java).apply {
@@ -51,24 +51,25 @@ class AlarmReceiver : BroadcastReceiver() {
                 putExtra(WakeUpCheckActivity.EXTRA_ALARM_ID, alarmId)
             }
 
-            val activityOptionsBundle = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                ActivityOptions.makeBasic().setPendingIntentBackgroundActivityStartMode(
-                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                ).toBundle()
-            } else null
-
+            // PendingIntent 作成時には activityOptionsBundle は渡さない（渡すと IllegalArgumentException でクラッシュする）
             val fullScreenPendingIntent = PendingIntent.getActivity(
                 context,
                 (alarmId + 10000).toInt(),
                 checkIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                activityOptionsBundle
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-            // 起床確認用の通知チャンネルを作成
+            // 起床確認用のアラーム通知チャンネルを作成（おやすみモード/DnD貫通設定）
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val audioAttributes = android.media.AudioAttributes.Builder()
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                    .build()
+                val soundUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION)
+                    ?: android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
+
                 val channel = NotificationChannel(
                     WAKEUP_CHECK_CHANNEL_ID,
                     "起床確認通知",
@@ -77,6 +78,8 @@ class AlarmReceiver : BroadcastReceiver() {
                     description = "起床確認時に画面を点灯させて確認画面を表示する通知です"
                     lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
                     setBypassDnd(true)
+                    setSound(soundUri, audioAttributes)
+                    enableVibration(true)
                 }
                 notificationManager.createNotificationChannel(channel)
             }
@@ -93,11 +96,15 @@ class AlarmReceiver : BroadcastReceiver() {
                 .setAutoCancel(true)
                 .build()
 
-            notificationManager.notify(WAKEUP_CHECK_NOTIFICATION_ID, notification)
-
-            // 直接の起動も念のため試行
             try {
-                context.startActivity(checkIntent, activityOptionsBundle)
+                notificationManager.notify(WAKEUP_CHECK_NOTIFICATION_ID, notification)
+            } catch (e: Exception) {
+                Log.e(TAG, "起床確認通知の送信に失敗しました", e)
+            }
+
+            // 直接の起動も試行
+            try {
+                context.startActivity(checkIntent)
             } catch (e: Exception) {
                 Log.w(TAG, "直接の startActivity は制限されました（FullScreenIntentで起動されます）", e)
             }
@@ -125,7 +132,11 @@ class AlarmReceiver : BroadcastReceiver() {
                 putExtra(AlarmRingingService.EXTRA_ALARM_ID, alarmId)
                 putExtra(AlarmRingingService.EXTRA_IS_WAKEUP_CHECK, false)
             }
-            context.startActivity(activityIntent)
+            try {
+                context.startActivity(activityIntent)
+            } catch (e: Exception) {
+                Log.w(TAG, "直接の startActivity は制限されました（AlarmRingingServiceのFullScreenIntentで起動されます）", e)
+            }
         }
     }
 
