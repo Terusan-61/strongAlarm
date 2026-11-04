@@ -118,21 +118,19 @@ class WakeUpCheckActivity : ComponentActivity() {
     }
 
     /**
-     * 画面強制点灯 & ロック画面解除
+     * 画面強制点灯 & ロック画面「上」への直接表示（ロック解除不要）
      */
     @Suppress("DEPRECATION")
     private fun setupWakeLock() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
-            val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
-            keyguardManager?.requestDismissKeyguard(this, null)
         }
         window.addFlags(
             WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
                     WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
                     WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
-                    WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+                    WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON
         )
         // 物理画面点灯を強制維持
         try {
