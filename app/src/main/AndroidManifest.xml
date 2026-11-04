@@ -40,7 +40,10 @@
             android:exported="false"
             android:showWhenLocked="true"
             android:turnScreenOn="true"
-            android:launchMode="singleTask" />
+            android:inheritShowWhenLocked="true"
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:taskAffinity="" />
 
         <!-- アラーム鳴動用フォアグラウンドサービス -->
         <service

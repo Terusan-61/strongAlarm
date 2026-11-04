@@ -107,5 +107,16 @@ class MainActivity : ComponentActivity() {
             }
             runCatching { startActivity(intent) }
         }
+
+        // Android 14+ で FullScreenIntent 権限（ロック画面上での全画面アラーム表示）が許可されていない場合のガイド導線
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager
+            if (notificationManager != null && !notificationManager.canUseFullScreenIntent()) {
+                val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+                runCatching { startActivity(intent) }
+            }
+        }
     }
 }
