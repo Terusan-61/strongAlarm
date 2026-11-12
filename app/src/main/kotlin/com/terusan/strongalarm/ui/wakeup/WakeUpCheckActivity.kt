@@ -257,6 +257,7 @@ class WakeUpCheckActivity : ComponentActivity() {
         try {
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             notificationManager?.cancel(AlarmReceiver.WAKEUP_CHECK_NOTIFICATION_ID)
+            notificationManager?.cancel(AlarmScheduler.getUpcomingNotificationId(alarmId))
         } catch (e: Exception) {
             e.printStackTrace()
         }

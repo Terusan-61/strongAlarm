@@ -1,13 +1,21 @@
 package com.terusan.strongalarm.service
 
 import android.app.AlarmManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import androidx.core.app.NotificationCompat
+import com.terusan.strongalarm.MainActivity
+import com.terusan.strongalarm.R
 import com.terusan.strongalarm.domain.model.Alarm
 import com.terusan.strongalarm.util.AlarmTimeCalculator
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Androidの AlarmManager を操作して正確なアラームをスケジュールするクラス
@@ -25,6 +33,12 @@ class AlarmScheduler(private val context: Context) {
 
         // 起床確認用のリクエストコードオフセット（通常アラームIDと衝突させないため）
         private const val WAKEUP_CHECK_OFFSET = 1_000_000
+
+        // 起床確認の事前予告通知チャンネル＆通知ID
+        const val WAKEUP_CHECK_UPCOMING_CHANNEL_ID = "strong_alarm_wakeup_check_upcoming_channel"
+        private const val BASE_UPCOMING_NOTIFICATION_ID = 90_000
+
+        fun getUpcomingNotificationId(alarmId: Long): Int = (BASE_UPCOMING_NOTIFICATION_ID + alarmId).toInt()
     }
 
     /**
@@ -68,6 +82,9 @@ class AlarmScheduler(private val context: Context) {
 
         setExactAlarm(triggerTimeMillis, pendingIntent)
         Log.d(TAG, "起床確認(ID: ${alarm.id}) を ${alarm.checkWakeUpAfterMinutes}分後にセットしました (サイレント: ${alarm.checkWakeUpSilent})")
+
+        // 起床確認が控えていることをユーザーに知らせる事前予告通知を表示
+        showWakeUpCheckUpcomingNotification(alarm, triggerTimeMillis)
     }
 
     /**
@@ -77,6 +94,7 @@ class AlarmScheduler(private val context: Context) {
         val pendingIntent = createAlarmPendingIntent(alarmId, isSnooze = false, isWakeUpCheck = true)
         alarmManager.cancel(pendingIntent)
         pendingIntent.cancel()
+        cancelWakeUpCheckUpcomingNotification(alarmId)
         Log.d(TAG, "起床確認(ID: $alarmId) をキャンセルしました")
     }
 
@@ -89,6 +107,81 @@ class AlarmScheduler(private val context: Context) {
         pendingIntent.cancel()
         cancelWakeUpCheck(alarm.id)
         Log.d(TAG, "アラーム(ID: ${alarm.id}) をキャンセルしました")
+    }
+
+    /**
+     * 起床確認の事前予告通知を表示
+     * 例:「10分後 (01:23) に起床確認を行います。画面に表示されるボタンを60秒以内に押さなければ、アラームが再鳴動しますのでご注意ください！」
+     */
+    fun showWakeUpCheckUpcomingNotification(alarm: Alarm, triggerTimeMillis: Long) {
+        try {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            // 通知チャンネル作成（静音・低優先度・ロック画面表示可）
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    WAKEUP_CHECK_UPCOMING_CHANNEL_ID,
+                    "起床確認の事前予告",
+                    NotificationManager.IMPORTANCE_LOW
+                ).apply {
+                    description = "起床確認が控えていることを事前にお知らせする通知です"
+                    lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+                    enableVibration(false)
+                    setSound(null, null)
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+            val formattedTime = timeFormat.format(Date(triggerTimeMillis))
+            val minutes = alarm.checkWakeUpAfterMinutes
+
+            val title = "⏰ 起床確認が控えています（${minutes}分後）"
+            val message = "${minutes}分後 ($formattedTime) に起床確認を行います。画面に表示されるボタンを60秒以内に押さなければ、アラームが再鳴動しますのでご注意ください！"
+
+            // タップ時は MainActivity を開く（事前解除ボタンは配置せず、あえてチェックを受けさせる方針）
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                getUpcomingNotificationId(alarm.id),
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val notification = NotificationCompat.Builder(context, WAKEUP_CHECK_UPCOMING_CHANNEL_ID)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setOngoing(true) // 誤ってスワイプで消してしまわないように常駐
+                .setContentIntent(pendingIntent)
+                .setShowWhen(true)
+                .setWhen(triggerTimeMillis)
+                .build()
+
+            notificationManager.notify(getUpcomingNotificationId(alarm.id), notification)
+            Log.d(TAG, "起床確認の事前予告通知を表示しました: ID=${getUpcomingNotificationId(alarm.id)}, 予定時刻=$formattedTime")
+        } catch (e: Exception) {
+            Log.e(TAG, "起床確認の事前予告通知の表示に失敗しました", e)
+        }
+    }
+
+    /**
+     * 起床確認の事前予告通知を消去
+     */
+    fun cancelWakeUpCheckUpcomingNotification(alarmId: Long) {
+        try {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.cancel(getUpcomingNotificationId(alarmId))
+            Log.d(TAG, "起床確認の事前予告通知を消去しました: ID=${getUpcomingNotificationId(alarmId)}")
+        } catch (e: Exception) {
+            Log.e(TAG, "起床確認の事前予告通知の消去に失敗しました", e)
+        }
     }
 
     /**

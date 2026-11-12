@@ -47,6 +47,11 @@ class AlarmReceiver : BroadcastReceiver() {
             // FullScreenIntent を設定した高優先度アラーム通知を発行して、
             // Android 14+ の BAL（Background Activity Launch）制限を突破し画面を強制点灯＆フルスクリーン起動
             // ==========================================
+
+            // 起床確認が発火したため、控えていた事前予告通知を消去
+            val scheduler = AlarmScheduler(context)
+            scheduler.cancelWakeUpCheckUpcomingNotification(alarmId)
+
             val checkIntent = Intent(context, WakeUpCheckActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                         Intent.FLAG_ACTIVITY_CLEAR_TOP or
