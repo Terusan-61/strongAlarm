@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.util.Log
@@ -23,6 +24,7 @@ class AlarmReceiver : BroadcastReceiver() {
     companion object {
         const val TAG = "AlarmReceiver"
         const val WAKEUP_CHECK_CHANNEL_ID = "strong_alarm_wakeup_check_channel"
+        const val WAKEUP_CHECK_SILENT_CHANNEL_ID = "strong_alarm_wakeup_check_silent_channel_v2"
         const val WAKEUP_CHECK_NOTIFICATION_ID = 8888
     }
 
@@ -62,33 +64,39 @@ class AlarmReceiver : BroadcastReceiver() {
             )
 
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channelId = if (isCheckWakeUpSilent) WAKEUP_CHECK_SILENT_CHANNEL_ID else WAKEUP_CHECK_CHANNEL_ID
+
+            val audioAttributes = android.media.AudioAttributes.Builder()
+                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                .build()
+
+            // サイレント時は無音オーディオ（silent.wav）を指定し、OSに音ありアラームと認識させてFullScreenIntentを発火させる
+            val soundUri = if (isCheckWakeUpSilent) {
+                Uri.parse("android.resource://${context.packageName}/${R.raw.silent}")
+            } else {
+                android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION)
+                    ?: android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
+            }
 
             // 起床確認用のアラーム通知チャンネルを作成（おやすみモード/DnD貫通設定）
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val audioAttributes = android.media.AudioAttributes.Builder()
-                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .setUsage(android.media.AudioAttributes.USAGE_ALARM)
-                    .build()
-                val soundUri = if (isCheckWakeUpSilent) null else {
-                    android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION)
-                        ?: android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
-                }
-
                 val channel = NotificationChannel(
-                    WAKEUP_CHECK_CHANNEL_ID,
-                    "起床確認通知",
+                    channelId,
+                    if (isCheckWakeUpSilent) "起床確認通知（サイレント）" else "起床確認通知",
                     NotificationManager.IMPORTANCE_HIGH
                 ).apply {
                     description = "起床確認時に画面を点灯させて確認画面を表示する通知です"
                     lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
                     setBypassDnd(true)
-                    setSound(soundUri, if (isCheckWakeUpSilent) null else audioAttributes)
+                    setSound(soundUri, audioAttributes)
                     enableVibration(!isCheckWakeUpSilent)
                 }
                 notificationManager.createNotificationChannel(channel)
             }
 
-            val notificationBuilder = NotificationCompat.Builder(context, WAKEUP_CHECK_CHANNEL_ID)
+            // setSilent(true) は呼んではいけない（呼ぶとOSがFullScreenIntentをブロックするため）
+            val notification = NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle(if (isCheckWakeUpSilent) "🤫 起床確認（サイレント抜き打ち）" else "起床確認（二度寝防止）")
                 .setContentText("起きていますか？タップして確認してください")
@@ -97,14 +105,9 @@ class AlarmReceiver : BroadcastReceiver() {
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setFullScreenIntent(fullScreenPendingIntent, true)
                 .setContentIntent(fullScreenPendingIntent)
+                .setSound(soundUri)
                 .setAutoCancel(true)
-
-            if (isCheckWakeUpSilent) {
-                notificationBuilder.setSilent(true)
-                notificationBuilder.setVibrate(longArrayOf(0))
-            }
-
-            val notification = notificationBuilder.build()
+                .build()
 
             try {
                 notificationManager.notify(WAKEUP_CHECK_NOTIFICATION_ID, notification)
